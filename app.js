@@ -405,7 +405,7 @@
           setStatus(`${f.name} has no readable text (it may be a scanned image). Copy the text and paste it instead, or use “Add a date”.`, true);
           continue;
         }
-        MPDParser.findDates(lines).forEach(d => items.push({ ...d, source: f.name }));
+        MPDParser.findDates(lines, new Date(), { list: true }).forEach(d => items.push({ ...d, source: f.name }));
       } catch (err) {
         console.error(err);
         setStatus(`Couldn’t read ${f.name}. ${err.message || ''}`, true);

@@ -43,3 +43,20 @@ const pasted = findDates([
 assert.strictEqual(pasted[0].guessWho, 'theo');
 assert.strictEqual(pasted[0].details, 'Please bring a packed lunch and wellies. Coach leaves at 9am.');
 console.log('who + details ok');
+
+// PDFs: only the date list, never the letter text beside it or dates buried in sentences.
+const pdf = findDates([
+  ['Another wonderful week has', '13th November Children In Need Day'],
+  ['been had at Manor Park! The', 'wc 16th November Anti-bullying week'],
+  ['much colder now, so please', '14th December Y1 and Y2 Nativity 10:30am - 11:30am'],
+  ['warm coat to school every day.'],
+  ['SALT Drop-in sessions 28 January'],
+  ['Future drop-in dates:'],
+  ['6 May 2027'],
+], today, { list: true }).map(e => `${e.date}|${e.title}|${e.details}`);
+assert.deepStrictEqual(pdf, [
+  '2026-11-13|Children In Need Day|',
+  '2026-11-16|Anti-bullying week|',
+  '2026-12-14|Y1 and Y2 Nativity 10:30am - 11:30am|',
+]);
+console.log('pdf list mode ok');

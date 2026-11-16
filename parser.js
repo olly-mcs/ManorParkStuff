@@ -137,7 +137,14 @@
    * lines: array of strings (one per line of the PDF, in reading order).
    * Returns [{ date, endDate?, title, context }]
    */
-  function findDates(lines, today = new Date()) {
+  /**
+   * options.list = true (PDFs): only take entries laid out as a list, i.e. a line that starts
+   * with a date and has its name on the same line. Body text and stray dates are ignored,
+   * and no notes are taken from the lines around it.
+   */
+  function findDates(lines, today = new Date(), options = {}) {
+    const list = !!options.list;
+    const startsWithDate = new RegExp(`^(?:(?:w\\/c|w\\.c\\.|wc|week commencing|week beginning)\\s+)?(?:${WEEKDAY_RE},?\\s+)?\\d{1,2}(?:st|nd|rd|th)?\\b`, 'i');
     const found = [];
     const seen = new Set();
     // Each line may be a string or an array of side-by-side segments.
@@ -159,6 +166,7 @@
         }
       }
       if (!hits.length) return;
+      if (list && !startsWithDate.test(seg)) return;
 
       // Title: the segment minus its dates, then the segment to its right,
       // then a neighbouring line with no date of its own (e.g. a heading above).
@@ -171,7 +179,7 @@
         title = cleanTitle(row[j + 1]);
         context = seg + '  ' + row[j + 1];
       }
-      if (title.length < 3 && row.length === 1) {
+      if (title.length < 3 && row.length === 1 && !list) {
         const prev = rows[i - 1], next = rows[i + 1];
         const wordy = t => (t.match(/[a-z]/gi) || []).length >= 3 && !/^(www\.|https?:)/i.test(t);
         const pick = [prev, next].find(r => r && r.length === 1 && !hasDate(r[0]) && wordy(cleanTitle(r[0])));
@@ -181,7 +189,7 @@
 
       // Details: the lines that follow in the same paragraph, until the next date.
       const more = [];
-      if (row.length === 1) {
+      if (row.length === 1 && !list) {
         for (let k = i + 1; k < rows.length && more.length < 4; k++) {
           const r = rows[k];
           if (!r.length || r.length > 1 || hasDate(r[0])) break;
@@ -191,6 +199,8 @@
       }
       const details = more.join(' ').slice(0, 400);
       const who = guessWho(context + ' ' + details);
+
+      if (list && title.length < 3) return; // a date with no name next to it
 
       for (const h of hits) {
         const { d1, d2, y } = h.parts;
