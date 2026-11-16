@@ -24,6 +24,18 @@ function cleanEvent(e) {
   };
 }
 
+// School dinners: { theo: { "2026-11-16": "dinner" | "packed" }, ruby: { ... } }
+function cleanMeals(m) {
+  const out = { theo: {}, ruby: {} };
+  for (const child of ['theo', 'ruby']) {
+    const days = m && typeof m[child] === 'object' ? m[child] : {};
+    for (const [date, v] of Object.entries(days).slice(0, 800)) {
+      if (/^\d{4}-\d{2}-\d{2}$/.test(date) && (v === 'dinner' || v === 'packed')) out[child][date] = v;
+    }
+  }
+  return out;
+}
+
 export default async (req) => {
   const route = new URL(req.url).pathname.replace(/^\/api\/?/, '').replace(/\/$/, '');
 
@@ -60,7 +72,7 @@ export default async (req) => {
     try { body = await req.json(); } catch { return json({ error: 'Bad data' }, 400); }
     if (!Array.isArray(body?.events)) return json({ error: 'Bad data' }, 400);
     const events = body.events.slice(0, MAX_EVENTS).map(cleanEvent).filter(Boolean);
-    await saveEvents({ events });
+    await saveEvents({ events, meals: cleanMeals(body.meals) });
     return json({ ok: true, count: events.length });
   }
 

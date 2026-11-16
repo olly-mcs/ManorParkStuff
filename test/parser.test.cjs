@@ -60,3 +60,14 @@ assert.deepStrictEqual(pdf, [
   '2026-12-14|Y1 and Y2 Nativity 10:30am - 11:30am|',
 ]);
 console.log('pdf list mode ok');
+
+// School dinner PDFs: every date counts, including "16/11" and week ranges.
+const { findMealDates } = globalThis.MPDParser || require('../parser.js');
+assert.deepStrictEqual(findMealDates([
+  'Theo Clark - Hot Meal Bookings',
+  'Mon 16/11  Roast chicken',
+  ['Wednesday 18th November', 'Pasta bake'],
+  'Week of 23rd - 25th November: school dinner',
+  'Lunch is served at 12.15',
+], today), ['2026-11-16', '2026-11-18', '2026-11-23', '2026-11-24', '2026-11-25']);
+console.log('meal dates ok');

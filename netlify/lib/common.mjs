@@ -53,10 +53,13 @@ const store = () => getStore({ name: 'manor-park-dates', consistency: 'strong' }
 
 export async function loadEvents() {
   const data = await store().get('events', { type: 'json' });
-  return Array.isArray(data?.events) ? data : { events: [] };
+  return {
+    events: Array.isArray(data?.events) ? data.events : [],
+    meals: data?.meals && typeof data.meals === 'object' ? data.meals : { theo: {}, ruby: {} },
+  };
 }
 export async function saveEvents(data) {
-  await store().setJSON('events', { events: data.events, savedAt: new Date().toISOString() });
+  await store().setJSON('events', { events: data.events, meals: data.meals || { theo: {}, ruby: {} }, savedAt: new Date().toISOString() });
 }
 async function loadSentLog() {
   return (await store().get('reminders-sent', { type: 'json' })) || {};

@@ -39,9 +39,43 @@
   </header>
 
   <main class="wrap">
+    <section id="lunch-next" class="lunch-next" hidden></section>
+
     <section id="flags" class="flags" aria-live="polite" hidden>
       <h2 class="section-label">Coming up in the next 7 days</h2>
       <ul id="flag-list" class="flag-list"></ul>
+    </section>
+
+    <section class="meals" aria-labelledby="meals-title">
+      <h2 id="meals-title" class="section-label">School dinners</h2>
+      <div class="meal-uploaders">
+        <label class="meal-up theo" for="meal-theo">
+          <span class="meal-up-name">Theo's school dinners</span>
+          <span class="meal-up-hint">Upload PDF. Days not in it are packed lunch days.</span>
+          <input type="file" id="meal-theo" data-child="theo" accept="application/pdf,.pdf" hidden>
+        </label>
+        <label class="meal-up ruby" for="meal-ruby">
+          <span class="meal-up-name">Ruby's school dinners</span>
+          <span class="meal-up-hint">Upload PDF. Days not in it are packed lunch days.</span>
+          <input type="file" id="meal-ruby" data-child="ruby" accept="application/pdf,.pdf" hidden>
+        </label>
+      </div>
+      <p id="meal-status" class="drop-status" role="status"></p>
+    </section>
+
+    <section id="meal-review" class="review" hidden>
+      <div class="review-head">
+        <div>
+          <h2 class="section-label" id="meal-review-title"></h2>
+          <p class="hint" id="meal-review-summary"></p>
+        </div>
+        <div class="review-actions">
+          <button type="button" class="btn ghost" id="meal-cancel">Cancel</button>
+          <button type="button" class="btn primary" id="meal-save">Save to calendar</button>
+        </div>
+      </div>
+      <p class="hint">Tap a day to switch it between school dinner and packed lunch.</p>
+      <div id="meal-weeks" class="meal-weeks"></div>
     </section>
 
     <section class="sources">
@@ -107,6 +141,8 @@
           <span><i class="dot dot-event"></i>Both / not set</span>
           <span><i class="dot dot-important"></i>Important</span>
           <span><i class="dot dot-flag"></i>Within a week</span>
+          <span><i class="meal-key dinner">T</i>School dinner</span>
+          <span><i class="meal-key packed">T</i>Packed lunch</span>
         </div>
       </div>
       <div class="grid weekdays" aria-hidden="true">

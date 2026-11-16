@@ -226,7 +226,57 @@
     return found.sort((a, b) => a.date.localeCompare(b.date));
   }
 
-  const api = { findDates, groupItems, guessWho };
+  /**
+   * School dinner PDFs: every date mentioned anywhere is a dinner day.
+   * Also reads "16/11" with no year, and a range ("16th - 20th November") as every weekday in it.
+   * Returns sorted ISO dates.
+   */
+  function findMealDates(lines, today = new Date()) {
+    const out = new Set();
+    const text = lines.map(l => (Array.isArray(l) ? l.join('   ') : String(l))).join('\n');
+    let rest = text;
+    for (const p of PATTERNS) {
+      p.re.lastIndex = 0;
+      let m;
+      while ((m = p.re.exec(rest))) {
+        const { d1, d2, y } = p.build(m);
+        const m1 = monthIndex(p.build(m).m1);
+        const m2v = p.build(m).m2;
+        const m2 = m2v != null ? monthIndex(m2v) : null;
+        if (m1 != null && m1 >= 0 && m1 <= 11) {
+          const year = y ? +y : guessYear(m1, d1, today);
+          const start = iso(year, m1, d1);
+          if (start) {
+            out.add(start);
+            if (d2 != null && m2 != null) {
+              const end = iso(year + (m2 < m1 ? 1 : 0), m2, d2);
+              const d = new Date(year, m1, d1);
+              for (let n = 0; end && n < 31; n++) {
+                d.setDate(d.getDate() + 1);
+                const k = iso(d.getFullYear(), d.getMonth(), d.getDate());
+                if (k > end) break;
+                if (d.getDay() !== 0 && d.getDay() !== 6) out.add(k);
+              }
+            }
+          }
+        }
+        rest = rest.slice(0, m.index) + ' '.repeat(m[0].length) + rest.slice(m.index + m[0].length);
+        p.re.lastIndex = m.index + m[0].length;
+      }
+    }
+    // Day/month with no year, e.g. "Mon 16/11". Skips times like 10.30.
+    const short = /(?<![\d:.\/])(\d{1,2})\/(\d{1,2})(?![\d\/])/g;
+    let m;
+    while ((m = short.exec(rest))) {
+      const d = +m[1], mo = +m[2] - 1;
+      if (mo < 0 || mo > 11) continue;
+      const k = iso(guessYear(mo, d, today), mo, d);
+      if (k) out.add(k);
+    }
+    return [...out].sort();
+  }
+
+  const api = { findDates, groupItems, guessWho, findMealDates };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else root.MPDParser = api;
 })(typeof window !== 'undefined' ? window : globalThis);

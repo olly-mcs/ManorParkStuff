@@ -8,6 +8,10 @@ A simple month-by-month calendar for Theo's and Ruby's school dates.
   years or classes (Reception, Y2, Willow, Cedar…) are labelled so they're easy to skip, and **Add all** leaves them out.
 - Lines under a date in a pasted email are kept as **notes**. If the date is already on the calendar,
   ✓ adds the notes to it instead of making a copy.
+- **School dinners:** upload Theo's and Ruby's dinner PDFs separately. Every date in the PDF is a school dinner day,
+  and every other weekday in the weeks it covers is a packed lunch day (INSET days and holidays on the calendar are left out).
+  You check the days before saving. Each school day on the calendar then shows "Theo: School dinner / Packed lunch" and
+  the same for Ruby; tap one to switch it. The next school day's lunches are shown at the top of the page.
 - Anything in the next 7 days is **flagged** at the top until you press **Close flag**.
 - **Email reminders** go to two addresses each morning: one when a date is a week away, and one the day before.
 - The site is behind a **family password**. The dates and email addresses are stored on the server, not in the page.
