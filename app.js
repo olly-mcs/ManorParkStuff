@@ -226,63 +226,37 @@
     renderMonthList();
   }
 
-  // Lunch reminders: tomorrow's headline, then the next five school days for each child.
-  function schoolDaysFrom(iso, count) {
-    const out = [];
-    for (let i = 0; out.length < count && i < 30; i++) {
-      const k = addDays(iso, i), w = fromISO(k).getDay();
-      if (w !== 0 && w !== 6 && !schoolClosed(k)) out.push(k);
-    }
-    return out;
+  /* Lunch box: the next lunch for each child. A school day with a school meal in an uploaded
+     order is "School meal"; any other school day is "Packed lunch". */
+  const LUNCH_HOUR = 13; // after lunchtime, show the next school day
+  function isSchoolDay(iso) {
+    const w = fromISO(iso).getDay();
+    return w !== 0 && w !== 6 && !schoolClosed(iso);
   }
+  function nextLunchDay() {
+    let iso = todayISO();
+    if (isSchoolDay(iso) && new Date().getHours() < LUNCH_HOUR) return iso;
+    for (let i = 0; i < 30; i++) { iso = addDays(iso, 1); if (isSchoolDay(iso)) return iso; }
+    return iso;
+  }
+  const lunchFor = (child, iso) => (state.meals[child][iso] === 'dinner' ? 'school' : 'packed');
+
   function renderLunchNext() {
     const box = $('#lunch-next');
-    const today = todayISO();
-    const days = schoolDaysFrom(addDays(today, 1), 5);
-    const kids = ['theo', 'ruby'].filter(c => filter === 'all' || filter === c);
-    const any = days.some(d => kids.some(c => state.meals[c][d]));
-    box.hidden = !any;
-    if (!any) return;
-
-    const next = days[0];
-    const n = daysBetween(today, next);
-    const whenText = n === 1 ? 'Tomorrow' : fmtLong.format(fromISO(next));
-    const names = k => kids.filter(c => (state.meals[c][next] || 'none') === k).map(c => WHO_LABEL[c]);
-    const packed = names('packed'), dinner = names('dinner'), none = names('none');
-    const join = a => a.join(' and ');
-    const parts = [];
-    if (packed.length) parts.push(`${join(packed)} need${packed.length === 1 ? 's' : ''} a packed lunch`);
-    if (dinner.length) parts.push(`${join(dinner)} ${dinner.length === 1 ? 'has' : 'have'} school dinner`);
-    if (none.length) parts.push(`no lunch plan for ${join(none)} yet`);
-    const headline = `${whenText}: ${parts.join(', ')}`.replace(/: no/, ': No');
-
-    const cell = (c, d) => {
-      const kind = state.meals[c][d];
-      const menu = state.menus[c][d];
-      if (!kind) return el('td', { class: 'lr-cell unknown' }, el('span', {}, 'Not uploaded'));
-      return el('td', { class: `lr-cell ${kind} ${c}` },
-        el('span', { class: 'lr-kind' }, kind === 'packed' ? 'Packed lunch' : 'School dinner'),
-        kind === 'dinner' && menu?.main ? el('small', {}, menu.main) : null);
-    };
-    // Phones get one row per day instead of the table.
-    const dayList = el('ul', { class: 'lr-days' }, ...days.map((d, i) => el('li', {},
-      el('span', { class: 'lr-day' }, i === 0 && n === 1 ? 'Tomorrow' : fmtShort.format(fromISO(d))),
-      el('div', { class: 'lr-kids' }, ...kids.map(c => {
-        const kind = state.meals[c][d];
-        return el('span', { class: `lr-pill ${c} ${kind || 'unknown'}` },
-          el('b', {}, WHO_LABEL[c]), ' ', kind === 'packed' ? 'Packed lunch' : kind === 'dinner' ? 'School dinner' : 'Not uploaded');
-      })))));
+    const hasOrders = ['theo', 'ruby'].some(c => Object.values(state.meals[c]).includes('dinner'));
+    box.hidden = !hasOrders;
+    if (!hasOrders) return;
+    const iso = nextLunchDay();
+    const n = daysBetween(todayISO(), iso);
+    const when = n === 0 ? 'Today' : n === 1 ? 'Tomorrow' : fmtLong.format(fromISO(iso));
     box.replaceChildren(
-      el('div', { class: 'lr-head' },
-        el('h2', { class: 'section-label' }, 'Lunch reminders'),
-        el('p', { class: 'lr-headline' + (packed.length ? ' packed' : '') }, headline)),
-      el('div', { class: 'lr-scroll' }, el('table', { class: 'lr-table' },
-        el('thead', {}, el('tr', {}, el('th', { scope: 'col' }, ''),
-          ...days.map((d, i) => el('th', { scope: 'col', class: i === 0 ? 'next' : '' }, i === 0 && n === 1 ? 'Tomorrow' : fmtShort.format(fromISO(d)))))),
-        el('tbody', {}, ...kids.map(c => el('tr', {},
-          el('th', { scope: 'row', class: c }, WHO_LABEL[c]),
-          ...days.map(d => cell(c, d))))))),
-      dayList);
+      el('span', { class: 'lunch-when' }, `${when}'s lunch`),
+      el('div', { class: 'lunch-kids' }, ...['theo', 'ruby'].map(c => {
+        const kind = lunchFor(c, iso);
+        return el('div', { class: `lunch-kid ${c} ${kind}` },
+          el('span', { class: 'lunch-name' }, WHO_LABEL[c]),
+          el('span', { class: 'lunch-kind' }, kind === 'school' ? 'School meal' : 'Packed lunch'));
+      })));
   }
 
   function renderFlags() {
@@ -452,45 +426,66 @@
     return state.events.some(e => onDay(e, iso) && CLOSED.test(e.title));
   }
 
-  let mealPending = null; // { child, source, days: { iso: 'dinner' | 'packed' } }
+  // Reads one order PDF: returns { child, dates } (child is null if the PDF doesn't name Theo or Ruby).
+  async function readMealPdf(file, say) {
+    let lines = await pdfLines(file);
+    // Screenshots of the meal ordering site have no text, so read the page images.
+    if (lines.flat().join('').replace(/\s/g, '').length < 40) {
+      lines = await ocrPdf(file, (page, pages) => say(`Reading ${file.name} (page ${page} of ${pages})…`));
+    }
+    const order = MPDParser.readMealOrder(lines);
+    const dates = (order ? order.dates : MPDParser.findMealDates(lines))
+      .filter(d => { const w = fromISO(d).getDay(); return w !== 0 && w !== 6; });
+    let child = order?.child || null;
+    if (!child) {
+      const all = lines.flat().join(' ');
+      const t = /\btheo\b/i.test(all), r = /\bruby\b/i.test(all);
+      child = t && !r ? 'theo' : r && !t ? 'ruby' : null;
+    }
+    return { child, dates };
+  }
 
-  async function handleMealFile(file) {
-    let child = null;
+  let unnamed = []; // orders that didn't say whose they are: [{ name, dates }]
+
+  async function handleMealFiles(files) {
     const status = $('#meal-status');
     const say = (msg, bad) => { status.textContent = msg; status.classList.toggle('error', !!bad); };
-    if (!file || !(file.type === 'application/pdf' || /\.pdf$/i.test(file.name))) { say('Choose a PDF.', true); return; }
-    say(`Reading ${file.name}…`);
-    let dates, menus = {}, found = null;
-    try {
-      let lines = await pdfLines(file);
-      // Screenshots of the meal ordering site have no text, so read the page images.
-      if (lines.flat().join('').replace(/\s/g, '').length < 40) {
-        lines = await ocrPdf(file, (page, pages, pct) => say(`Reading the page images of ${file.name}: page ${page} of ${pages} (${pct}%)…`));
+    const pdfs = [...files].filter(f => f.type === 'application/pdf' || /\.pdf$/i.test(f.name));
+    if (!pdfs.length) { say('Choose PDF files.', true); return; }
+    const added = { theo: 0, ruby: 0 };
+    const problems = [];
+    for (const f of pdfs) {
+      try {
+        say(`Reading ${f.name}…`);
+        const { child, dates } = await readMealPdf(f, say);
+        if (!dates.length) { problems.push(`No dates found in ${f.name}.`); continue; }
+        if (!child) { unnamed.push({ name: f.name, dates }); continue; }
+        dates.forEach(d => { if (state.meals[child][d] !== 'dinner') { state.meals[child][d] = 'dinner'; added[child]++; } });
+      } catch (err) {
+        console.error(err);
+        problems.push(`Couldn’t read ${f.name}.`);
       }
-      const order = MPDParser.readMealOrder(lines);
-      if (order) { dates = order.dates; menus = order.menus; found = order.child; }
-      else dates = MPDParser.findMealDates(lines);
-    } catch (err) {
-      console.error(err); say(`Couldn’t read ${file.name}. ${err.message || ''}`, true); return;
     }
-    dates = dates.filter(d => { const w = fromISO(d).getDay(); return w !== 0 && w !== 6; });
-    if (!dates.length) { say(`No dates found in ${file.name}.`, true); return; }
-    child = found;
-    const note = found ? `This order names ${WHO_LABEL[found]}.` : '';
-    // The order covers Monday of its first week to Friday of its last week.
-    const first = fromISO(dates[0]); first.setDate(first.getDate() - ((first.getDay() + 6) % 7));
-    const last = fromISO(dates[dates.length - 1]); last.setDate(last.getDate() + (5 - last.getDay()));
-    const set = new Set(dates);
-    const days = {};
-    for (const d = new Date(first); d <= last; d.setDate(d.getDate() + 1)) {
-      if (d.getDay() === 0 || d.getDay() === 6) continue;
-      const k = toISO(d);
-      days[k] = set.has(k) ? 'dinner' : (schoolClosed(k) ? 'closed' : 'packed');
-    }
-    say('');
-    mealPending = { child, found, source: file.name, days, menus, note };
-    renderMealReview();
-    $('#meal-review').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    save(); render(); renderUnnamed();
+    const done = ['theo', 'ruby'].filter(c => added[c]).map(c => `${WHO_LABEL[c]} ${added[c]} school meal${added[c] === 1 ? '' : 's'}`);
+    say([done.length ? 'Saved: ' + done.join(', ') + '.' : (problems.length || unnamed.length ? '' : 'Those school meals were already saved.'), ...problems].filter(Boolean).join(' '), problems.length > 0);
+  }
+
+  // Only shown when an order doesn't name either child.
+  function renderUnnamed() {
+    const box = $('#meal-unnamed');
+    box.hidden = !unnamed.length;
+    box.replaceChildren(...unnamed.map((u, i) => el('div', { class: 'unnamed-row' },
+      el('span', {}, `Whose order is ${u.name}?`),
+      ...['theo', 'ruby'].map(c => el('button', {
+        type: 'button', class: `btn ghost small ${c}`,
+        onclick: () => {
+          u.dates.forEach(d => { state.meals[c][d] = 'dinner'; });
+          unnamed.splice(i, 1);
+          save(); render(); renderUnnamed();
+          toast(`Saved ${u.dates.length} school meals for ${WHO_LABEL[c]}`);
+        },
+      }, WHO_LABEL[c])))));
   }
 
   // Text recognition for image-only PDFs, run in the browser with the copy of Tesseract hosted with the site.
@@ -534,49 +529,7 @@
     }
   }
 
-  function renderMealReview() {
-    const sec = $('#meal-review');
-    if (!mealPending) { sec.hidden = true; return; }
-    sec.hidden = false;
-    const { child, days, source } = mealPending;
-    const keys = Object.keys(days).sort();
-    const n = k => keys.filter(x => days[x] === k).length;
-    $('#meal-review-title').textContent = child ? `${WHO_LABEL[child]}'s school dinners, from ${source}` : `School dinners, from ${source}`;
-    $('#meal-who-row').hidden = !!mealPending.found;
-    document.querySelectorAll('#meal-who input').forEach(r => { r.checked = r.value === child; });
-    $('#meal-save').disabled = !child;
-    $('#meal-review-note').textContent = mealPending.note || '';
-    $('#meal-review-summary').textContent =
-      `${n('dinner')} school dinner day${n('dinner') === 1 ? '' : 's'} and ${n('packed')} packed lunch day${n('packed') === 1 ? '' : 's'}, ` +
-      `${fmtShort.format(fromISO(keys[0]))} to ${fmtShort.format(fromISO(keys[keys.length - 1]))}.`;
-    const weeks = [];
-    for (let i = 0; i < keys.length; i += 5) weeks.push(keys.slice(i, i + 5));
-    $('#meal-weeks').replaceChildren(...weeks.map(wk => el('div', { class: 'meal-week' }, wk.map(k => {
-      const kind = days[k];
-      return el('button', {
-        type: 'button', class: 'meal-day ' + (kind === 'closed' ? 'none' : kind), disabled: kind === 'closed',
-        'aria-label': `${fmtLong.format(fromISO(k))}: ${kind === 'dinner' ? 'school dinner' : kind === 'packed' ? 'packed lunch' : 'school closed'}`,
-        onclick: () => { days[k] = days[k] === 'dinner' ? 'packed' : 'dinner'; renderMealReview(); },
-      }, el('b', {}, fmtShort.format(fromISO(k))), kind === 'dinner' ? 'School dinner' : kind === 'packed' ? 'Packed lunch' : 'School closed',
-        kind === 'dinner' && mealPending.menus[k]?.main ? el('small', { class: 'meal-dish' }, mealPending.menus[k].main) : null);
-    }))));
-  }
-
-  $('#meal-file').addEventListener('change', e => { handleMealFile(e.target.files[0]); e.target.value = ''; });
-  $('#meal-who').addEventListener('change', e => { if (mealPending) { mealPending.child = e.target.value; renderMealReview(); } });
-  $('#meal-cancel').addEventListener('click', () => { mealPending = null; renderMealReview(); });
-  $('#meal-save').addEventListener('click', () => {
-    const { child, days, menus } = mealPending;
-    if (!child) return;
-    for (const [k, v] of Object.entries(days)) {
-      if (v === 'dinner' || v === 'packed') state.meals[child][k] = v;
-      if (menus[k]) state.menus[child][k] = menus[k]; else if (v === 'packed') delete state.menus[child][k];
-    }
-    const firstDay = Object.keys(days).sort()[0];
-    mealPending = null; renderMealReview();
-    save(); jumpTo(firstDay);
-    toast(`Saved ${WHO_LABEL[child]}'s school dinners`);
-  });
+  $('#meal-file').addEventListener('change', e => { handleMealFiles(e.target.files); e.target.value = ''; });
 
   /* ---------- PDF import ---------- */
   async function pdfLines(file) {

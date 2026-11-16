@@ -114,9 +114,13 @@ export function dueLunches(meals, events, log, today = londonToday(), menus = {}
   const closed = events.some(e => e?.title && CLOSED.test(e.title) &&
     (e.date === date || (e.endDate && e.date <= date && date <= e.endDate)));
   if (closed) return null;
+  // No school meal in the uploaded orders means a packed lunch (once any order has been uploaded).
+  const hasOrders = ['theo', 'ruby'].some(c => Object.values(meals?.[c] || {}).includes('dinner'));
+  if (!hasOrders) return null;
+  const w = d.getUTCDay();
+  if (w === 0 || w === 6) return null;
   const lunches = ['theo', 'ruby']
-    .map(child => ({ child, kind: meals?.[child]?.[date], dish: menus?.[child]?.[date]?.main || '' }))
-    .filter(l => l.kind === 'dinner' || l.kind === 'packed');
+    .map(child => ({ child, kind: meals?.[child]?.[date] === 'dinner' ? 'dinner' : 'packed', dish: '' }));
   if (!lunches.some(l => l.kind === 'packed')) return null;
   return { date, key, lunches };
 }
@@ -155,7 +159,7 @@ export function buildEmail({ week, tomorrow, lunch }, siteUrl) {
       const colour = l.child === 'theo' ? '#2459b8' : '#a8245e';
       const isPacked = l.kind === 'packed';
       return `<tr><td style="padding:10px 12px;border-left:4px solid ${colour};background:${isPacked ? '#fdf1d3' : '#f5f7f4'};font:${isPacked ? 700 : 400} 16px/1.4 Arial,sans-serif;color:#18231c">
-        <span style="color:${colour};font-weight:700">${WHO[l.child]}</span>: ${isPacked ? 'needs a packed lunch' : 'school dinner'}${!isPacked && l.dish ? `<div style="font:14px/1.4 Arial,sans-serif;color:#5b6b60">${esc(l.dish)}</div>` : ''}</td></tr><tr><td style="height:6px"></td></tr>`;
+        <span style="color:${colour};font-weight:700">${WHO[l.child]}</span>: ${isPacked ? 'needs a packed lunch' : 'school meal'}${!isPacked && l.dish ? `<div style="font:14px/1.4 Arial,sans-serif;color:#5b6b60">${esc(l.dish)}</div>` : ''}</td></tr><tr><td style="height:6px"></td></tr>`;
     }).join('')}</table>` : '';
   const html = `<div style="max-width:560px;margin:0 auto;padding:16px">
     <div style="font:700 22px/1.2 Arial,sans-serif;color:#1f5a3c">Manor Park Dates</div>
@@ -167,7 +171,7 @@ export function buildEmail({ week, tomorrow, lunch }, siteUrl) {
 
   const line = ({ ev, n }) => `- ${WHO[ev.who] || WHO.both}: ${ev.important ? '[IMPORTANT] ' : ''}${ev.title}, ${longDate(ev.date)}${n ? ` (in ${n} days)` : ''}${ev.notes ? ` (${ev.notes})` : ''}`;
   const text = ['Manor Park Dates', '',
-    ...(lunch ? [`LUNCH TOMORROW (${longDate(lunch.date)})`, ...lunch.lunches.map(l => `- ${WHO[l.child]}: ${l.kind === 'packed' ? 'needs a packed lunch' : 'school dinner' + (l.dish ? ` (${l.dish})` : '')}`), ''] : []),
+    ...(lunch ? [`LUNCH TOMORROW (${longDate(lunch.date)})`, ...lunch.lunches.map(l => `- ${WHO[l.child]}: ${l.kind === 'packed' ? 'needs a packed lunch' : 'school meal'}`), ''] : []),
     ...(tomorrow.length ? ['TOMORROW', ...tomorrow.map(line), ''] : []),
     ...(week.length ? ['COMING UP IN THE NEXT WEEK', ...week.map(line), ''] : []),
     siteUrl || ''].join('\n');

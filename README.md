@@ -8,14 +8,13 @@ A simple month-by-month calendar for Theo's and Ruby's school dates.
   years or classes (Reception, Y2, Willow, Hazel…) are labelled so they're easy to skip, and **Add all** leaves them out.
 - Lines under a date in a pasted email are kept as **notes**. If the date is already on the calendar,
   ✓ adds the notes to it instead of making a copy.
-- **School dinners:** one uploader for both children. It reads whose order it is from the PDF (or asks, if the PDF
-  doesn't say). Every date in the order is a school dinner day, and every other weekday in the weeks it covers is a
-  packed lunch day (INSET days and holidays on the calendar are left out). You check the days before saving.
-  - Screenshots of the meal ordering site (image-only PDFs, like the Local Food Links "Order #…" pages) are read
-    with text recognition that runs in the browser (Tesseract, hosted in `vendor/tesseract/`). Each day's main course
-    and dessert are kept.
-- **Lunch reminders**, under the uploader: who needs a packed lunch tomorrow, and the next five school days for both children.
-  The morning email also says when someone needs a packed lunch the next day, with the school dinner dish for the other.
+- **School meals:** upload one or more meal order PDFs at once. Each order names the child, so its school-meal
+  dates are saved to Theo or Ruby automatically (if a PDF doesn't say, you're asked whose it is). Screenshots of the
+  ordering site (image-only PDFs, like the Local Food Links "Order #…" pages) are read with text recognition that
+  runs in the browser (Tesseract, hosted in `vendor/tesseract/`).
+- **Next lunch box**, under the uploader: "Theo: Packed lunch · Ruby: School meal". A school day with a school meal in
+  an uploaded order is a school meal; any other school day is a packed lunch. It shows today's lunch until 1pm, then
+  the next school day's. The morning email says when someone needs a packed lunch the next day.
 - Anything in the next 7 days is **flagged** at the top until you press **Close flag**.
 - **Email reminders** go to two addresses each morning: one when a date is a week away, and one the day before.
 - The site is behind a **family password**. The dates and email addresses are stored on the server, not in the page.

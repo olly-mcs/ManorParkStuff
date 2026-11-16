@@ -45,39 +45,18 @@
     </section>
 
     <section class="meals" aria-labelledby="meals-title">
-      <h2 id="meals-title" class="section-label">School dinners</h2>
+      <h2 id="meals-title" class="section-label">School meals</h2>
       <label class="meal-up" for="meal-file">
-        <span class="meal-up-name">Upload a school dinner order</span>
-        <span class="meal-up-hint">For Theo or Ruby. It reads whose order it is. Days not in it are packed lunch days.</span>
-        <input type="file" id="meal-file" accept="application/pdf,.pdf" hidden>
+        <span class="meal-up-name">Upload school meal orders</span>
+        <span class="meal-up-hint">Choose one or more PDFs, for Theo or Ruby. School days without a school meal are packed lunch days.</span>
+        <input type="file" id="meal-file" accept="application/pdf,.pdf" multiple hidden>
       </label>
       <p id="meal-status" class="drop-status" role="status"></p>
+      <div id="meal-unnamed" class="meal-unnamed" hidden></div>
     </section>
 
-    <section id="meal-review" class="review" hidden>
-      <div class="review-head">
-        <div>
-          <h2 class="section-label" id="meal-review-title"></h2>
-          <p class="hint" id="meal-review-summary"></p>
-          <p class="hint meal-note" id="meal-review-note"></p>
-          <div class="review-bulk" id="meal-who-row" hidden>
-            <span>Whose order is this?</span>
-            <div class="who-pick" id="meal-who">
-              <label><input type="radio" name="meal-who" value="theo"><span>Theo</span></label>
-              <label><input type="radio" name="meal-who" value="ruby"><span>Ruby</span></label>
-            </div>
-          </div>
-        </div>
-        <div class="review-actions">
-          <button type="button" class="btn ghost" id="meal-cancel">Cancel</button>
-          <button type="button" class="btn primary" id="meal-save">Save to calendar</button>
-        </div>
-      </div>
-      <p class="hint">Tap a day to switch it between school dinner and packed lunch.</p>
-      <div id="meal-weeks" class="meal-weeks"></div>
-    </section>
 
-    <section id="lunch-next" class="lunch-next" aria-label="Lunch reminders" hidden></section>
+    <section id="lunch-next" class="lunch-next" aria-label="Next lunch" hidden></section>
 
     <section class="sources">
       <div id="dropzone" class="dropzone" tabindex="0" role="button" aria-label="Upload a PDF letter from school">
