@@ -1,0 +1,41 @@
+// Quick check that the date finder still reads typical school-letter lines.
+const assert = require('assert');
+require('../parser.js');
+const { findDates } = globalThis.MPDParser || require('../parser.js');
+const today = new Date(2026, 10, 16);
+const got = findDates([
+  'Harvest Festival assembly on Friday 21st November at 9am',
+  'Half term: 15th - 19th February 2027',
+  'INSET day Monday 5 January',
+  'Christmas Fair',
+  'Saturday 6th December 2026',
+  'Year 3 trip to the zoo - 03/12/2026',
+], today).map(e => `${e.date}|${e.endDate || ''}|${e.title}`);
+assert.deepStrictEqual(got, [
+  '2026-11-21||Harvest Festival assembly at 9am',
+  '2026-12-03||Year 3 trip to the zoo',
+  '2026-12-06||Christmas Fair',
+  '2027-01-05||INSET day',
+  '2027-02-15|2027-02-19|Half term',
+]);
+console.log('parser ok');
+
+const { guessWho } = globalThis.MPDParser || require('../parser.js');
+assert.deepStrictEqual(guessWho('Y3 Journey to the Stable'), { guessWho: 'theo' });
+assert.deepStrictEqual(guessWho('Y1 and Y2 Nativity'), { guessWho: 'ruby' });
+assert.deepStrictEqual(guessWho('Years 1-4 sports day'), { guessWho: 'both' });
+assert.deepStrictEqual(guessWho('Y3 and Y4 Christmas Service'), { guessWho: 'theo' });
+assert.deepStrictEqual(guessWho('2pm Reception Christmas craft'), { otherGroup: 'Reception' });
+assert.deepStrictEqual(guessWho('Pantomime'), {});
+
+// Pasted email: the lines under a date become its details.
+const pasted = findDates([
+  'Year 3 trip to Kingston Maurward on Thursday 3rd December',
+  'Please bring a packed lunch and wellies.',
+  'Coach leaves at 9am.',
+  '',
+  'Unrelated paragraph.',
+], today);
+assert.strictEqual(pasted[0].guessWho, 'theo');
+assert.strictEqual(pasted[0].details, 'Please bring a packed lunch and wellies. Coach leaves at 9am.');
+console.log('who + details ok');

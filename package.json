@@ -1,0 +1,13 @@
+{
+  "name": "manor-park-dates",
+  "private": true,
+  "type": "module",
+  "description": "Calendar of school dates for Theo and Ruby, with email reminders.",
+  "scripts": {
+    "start": "netlify dev",
+    "test": "node test/parser.test.cjs"
+  },
+  "dependencies": {
+    "@netlify/blobs": "11.1.7"
+  }
+}

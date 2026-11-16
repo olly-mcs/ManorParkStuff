@@ -1,0 +1,189 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Manor Park Dates</title>
+  <meta name="description" content="Upload letters from school and keep every date on one calendar.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Inter:wght@400;500;600&display=swap">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body class="locked">
+  <section id="login" class="login" hidden>
+    <form id="login-form" class="login-card">
+      <h1 class="brand">Manor Park <span>Dates</span></h1>
+      <p class="hint">Theo and Ruby's school calendar. Enter the family password to see it.</p>
+      <label class="field">
+        <span>Password</span>
+        <input type="password" id="login-password" autocomplete="current-password" required>
+      </label>
+      <p id="login-error" class="login-error" role="alert"></p>
+      <button type="submit" class="btn primary" id="login-submit">Sign in</button>
+    </form>
+  </section>
+
+  <header class="top">
+    <div class="wrap top-inner">
+      <h1 class="brand">Manor Park <span>Dates</span></h1>
+      <div class="top-actions">
+        <button type="button" class="btn ghost" id="add-btn">Add a date</button>
+        <button type="button" class="btn ghost" id="signout-btn">Sign out</button>
+        <label class="btn primary" for="pdf-input">
+          Upload school PDF
+          <input type="file" id="pdf-input" accept="application/pdf,.pdf" multiple hidden>
+        </label>
+      </div>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <section id="flags" class="flags" aria-live="polite" hidden>
+      <h2 class="section-label">Coming up in the next 7 days</h2>
+      <ul id="flag-list" class="flag-list"></ul>
+    </section>
+
+    <section class="sources">
+      <div id="dropzone" class="dropzone" tabindex="0" role="button" aria-label="Upload a PDF letter from school">
+        <h2 class="source-title">Upload a PDF</h2>
+        <p><strong>Drop a letter or newsletter here</strong>, or tap to choose one.</p>
+      </div>
+      <form id="paste-form" class="paste">
+        <h2 class="source-title"><label for="paste-text">Paste an email</label></h2>
+        <textarea id="paste-text" rows="4" placeholder="Paste the body of an email from school. Lines under a date are kept as notes."></textarea>
+        <div class="paste-actions">
+          <button type="submit" class="btn primary small" id="paste-find">Find dates</button>
+          <button type="button" class="btn ghost small" id="paste-clear">Clear</button>
+        </div>
+      </form>
+      <p id="drop-status" class="drop-status" role="status"></p>
+    </section>
+
+    <section id="review" class="review" hidden>
+      <div class="review-head">
+        <div>
+          <h2 class="section-label">Found in <span id="review-source"></span></h2>
+          <p class="hint">For each date: choose who it's for, star it if it matters, then tap <b>✓</b> to add it or <b>✕</b> to skip it.</p>
+        </div>
+        <div class="review-actions">
+          <button type="button" class="btn ghost" id="review-cancel">Skip all</button>
+          <button type="button" class="btn primary" id="review-add">Add all</button>
+        </div>
+      </div>
+      <div class="review-bulk">
+        <span>Who is this letter for?</span>
+        <div class="who-pick" id="bulk-who">
+          <label><input type="radio" name="bulk-who" value="theo"><span>Theo</span></label>
+          <label><input type="radio" name="bulk-who" value="ruby"><span>Ruby</span></label>
+          <label><input type="radio" name="bulk-who" value="both" checked><span>Both</span></label>
+        </div>
+        <span class="hint">Sets every date below. You can still change each one.</span>
+      </div>
+      <ul id="review-list" class="review-list"></ul>
+    </section>
+
+    <section class="calendar" aria-labelledby="month-title">
+      <div class="cal-head">
+        <h2 id="month-title" class="month-title"></h2>
+        <div class="cal-nav">
+          <button type="button" class="btn ghost icon" id="prev" aria-label="Previous month">‹</button>
+          <button type="button" class="btn ghost" id="today">Today</button>
+          <button type="button" class="btn ghost icon" id="next" aria-label="Next month">›</button>
+        </div>
+      </div>
+      <div class="cal-sub">
+        <div class="filter-bar" role="group" aria-label="Show dates for">
+          <span class="section-label" style="margin:0">Show</span>
+          <div class="who-pick">
+            <label><input type="radio" name="filter" value="all" checked><span>Everyone</span></label>
+            <label><input type="radio" name="filter" value="theo"><span>Theo</span></label>
+            <label><input type="radio" name="filter" value="ruby"><span>Ruby</span></label>
+          </div>
+        </div>
+        <div class="legend">
+          <span><i class="dot dot-theo"></i>Theo</span>
+          <span><i class="dot dot-ruby"></i>Ruby</span>
+          <span><i class="dot dot-event"></i>Both / not set</span>
+          <span><i class="dot dot-important"></i>Important</span>
+          <span><i class="dot dot-flag"></i>Within a week</span>
+        </div>
+      </div>
+      <div class="grid weekdays" aria-hidden="true">
+        <span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span><span>Sun</span>
+      </div>
+      <div id="grid" class="grid days"></div>
+      <p class="hint phone-note">Tap a day, or see every date in the list below.</p>
+    </section>
+
+    <section class="month-list-wrap">
+      <h2 class="section-label">This month at a glance</h2>
+      <ul id="month-list" class="month-list"></ul>
+    </section>
+
+    <section id="email-settings" class="email-settings">
+      <h2 class="section-label">Email reminders</h2>
+      <p id="email-status"></p>
+      <button type="button" class="btn ghost small" id="test-email-btn">Send a test email</button>
+    </section>
+
+    <footer class="foot">
+      <p><span id="sync" class="sync"></span> <span id="local-note" hidden>Preview mode: dates are saved in this browser only, and no emails are sent.</span></p>
+      <div class="foot-actions">
+        <button type="button" class="btn ghost small" id="export-btn">Download backup</button>
+        <label class="btn ghost small" for="import-input">
+          Restore backup
+          <input type="file" id="import-input" accept="application/json,.json" hidden>
+        </label>
+      </div>
+    </footer>
+  </main>
+
+  <dialog id="event-dialog" class="sheet">
+    <form id="event-form" method="dialog">
+      <h2 id="dialog-title" class="dialog-title">Date details</h2>
+      <label class="field">
+        <span>What's happening</span>
+        <input type="text" id="f-title" required maxlength="160">
+      </label>
+      <div class="field-row">
+        <label class="field">
+          <span>Date</span>
+          <input type="date" id="f-date" required>
+        </label>
+        <label class="field">
+          <span>Ends (optional)</span>
+          <input type="date" id="f-end">
+        </label>
+      </div>
+      <label class="field">
+        <span>Notes</span>
+        <textarea id="f-notes" rows="3" placeholder="Bring wellies, £3 for the trip…"></textarea>
+      </label>
+      <div class="field">
+        <span>Who is it for?</span>
+        <div class="who-pick">
+          <label><input type="radio" name="f-who" id="f-who-theo" value="theo"><span>Theo</span></label>
+          <label><input type="radio" name="f-who" id="f-who-ruby" value="ruby"><span>Ruby</span></label>
+          <label><input type="radio" name="f-who" id="f-who-both" value="both"><span>Both</span></label>
+        </div>
+      </div>
+      <label class="check">
+        <input type="checkbox" id="f-important">
+        <span>Mark as important</span>
+      </label>
+      <p id="f-source" class="hint"></p>
+      <div class="dialog-actions">
+        <button type="button" class="btn danger" id="f-delete">Delete</button>
+        <span class="spacer"></span>
+        <button type="button" class="btn ghost" id="f-cancel">Cancel</button>
+        <button type="submit" class="btn primary" id="f-save">Save</button>
+      </div>
+    </form>
+  </dialog>
+
+  <script src="vendor/pdf.min.js"></script>
+  <script src="parser.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
