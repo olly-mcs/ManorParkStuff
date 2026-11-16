@@ -319,7 +319,6 @@
       if (i >= 35 && d.getMonth() !== view.getMonth()) break;
       const iso = toISO(d);
       const dayEvents = events.filter(e => onDay(e, iso));
-      const meals = mealsOn(iso);
       const shown = dayEvents.slice(0, 4);
       const label = `${fmtLong.format(d)}${dayEvents.length ? ', ' + dayEvents.length + ' date' + (dayEvents.length > 1 ? 's' : '') : ''}`;
       const cls = ['day'];
@@ -329,7 +328,7 @@
 
       cells.push(el('div', {
         class: cls.join(' '), role: 'button', tabindex: '0', 'aria-label': label,
-        onclick: e => { if (!e.target.closest('.chip, .meal')) dayClicked(iso, dayEvents); },
+        onclick: e => { if (!e.target.closest('.chip')) dayClicked(iso, dayEvents); },
         onkeydown: e => { if ((e.key === 'Enter' || e.key === ' ') && e.target === e.currentTarget) { e.preventDefault(); dayClicked(iso, dayEvents); } },
       },
         el('span', { class: 'day-num' }, String(d.getDate())),
@@ -343,20 +342,7 @@
             ev.important ? el('span', { class: 'star-mark' }, '★ ') : null,
             el('span', { class: 'who' }, ev.who === 'both' || !ev.who ? 'Both' : WHO_LABEL[ev.who]),
             el('span', { class: 'chip-title' }, ev.title))),
-          dayEvents.length > shown.length ? el('span', { class: 'more' }, `+${dayEvents.length - shown.length} more`) : null),
-        meals.length ? el('div', { class: 'meal-lines' }, meals.map(({ child, kind, menu }) => {
-          const label = `${WHO_LABEL[child]}: ${kind === 'dinner' ? 'School dinner' : 'Packed lunch'}`;
-          const dish = menu ? [menu.main, menu.dessert].filter(Boolean).join(', then ') : '';
-          return el('button', {
-            type: 'button', class: `meal ${child} ${kind}`, title: label + (dish ? ` (${dish})` : '') + '. Tap to switch.',
-            'aria-label': `${label}, ${fmtLong.format(d)}. Tap to switch.`,
-            onclick: () => {
-              state.meals[child][iso] = kind === 'dinner' ? 'packed' : 'dinner';
-              save(); render();
-              toast(`${WHO_LABEL[child]}: ${state.meals[child][iso] === 'dinner' ? 'school dinner' : 'packed lunch'} on ${fmtShort.format(d)}`);
-            },
-          }, el('span', { class: 'long' }, label), el('span', { class: 'short' }, WHO_LABEL[child][0]));
-        })) : null));
+          dayEvents.length > shown.length ? el('span', { class: 'more' }, `+${dayEvents.length - shown.length} more`) : null)));
     }
     grid.replaceChildren(...cells);
   }
@@ -465,19 +451,11 @@
   function schoolClosed(iso) {
     return state.events.some(e => onDay(e, iso) && CLOSED.test(e.title));
   }
-  function mealsOn(iso) {
-    const out = [];
-    for (const child of ['theo', 'ruby']) {
-      if (filter !== 'all' && filter !== child) continue;
-      const kind = state.meals[child][iso];
-      if (kind && !schoolClosed(iso)) out.push({ child, kind, menu: kind === 'dinner' ? state.menus[child][iso] : null });
-    }
-    return out;
-  }
 
   let mealPending = null; // { child, source, days: { iso: 'dinner' | 'packed' } }
 
-  async function handleMealFile(file, child) {
+  async function handleMealFile(file) {
+    let child = null;
     const status = $('#meal-status');
     const say = (msg, bad) => { status.textContent = msg; status.classList.toggle('error', !!bad); };
     if (!file || !(file.type === 'application/pdf' || /\.pdf$/i.test(file.name))) { say('Choose a PDF.', true); return; }
@@ -497,11 +475,8 @@
     }
     dates = dates.filter(d => { const w = fromISO(d).getDay(); return w !== 0 && w !== 6; });
     if (!dates.length) { say(`No dates found in ${file.name}.`, true); return; }
-    let note = '';
-    if (found && found !== child) {
-      note = `This order is for ${WHO_LABEL[found]}, so it will be saved to ${WHO_LABEL[found]}'s dinners.`;
-      child = found;
-    }
+    child = found;
+    const note = found ? `This order names ${WHO_LABEL[found]}.` : '';
     // The order covers Monday of its first week to Friday of its last week.
     const first = fromISO(dates[0]); first.setDate(first.getDate() - ((first.getDay() + 6) % 7));
     const last = fromISO(dates[dates.length - 1]); last.setDate(last.getDate() + (5 - last.getDay()));
@@ -513,7 +488,7 @@
       days[k] = set.has(k) ? 'dinner' : (schoolClosed(k) ? 'closed' : 'packed');
     }
     say('');
-    mealPending = { child, source: file.name, days, menus, note };
+    mealPending = { child, found, source: file.name, days, menus, note };
     renderMealReview();
     $('#meal-review').scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
@@ -566,7 +541,10 @@
     const { child, days, source } = mealPending;
     const keys = Object.keys(days).sort();
     const n = k => keys.filter(x => days[x] === k).length;
-    $('#meal-review-title').textContent = `${WHO_LABEL[child]}'s school dinners, from ${source}`;
+    $('#meal-review-title').textContent = child ? `${WHO_LABEL[child]}'s school dinners, from ${source}` : `School dinners, from ${source}`;
+    $('#meal-who-row').hidden = !!mealPending.found;
+    document.querySelectorAll('#meal-who input').forEach(r => { r.checked = r.value === child; });
+    $('#meal-save').disabled = !child;
     $('#meal-review-note').textContent = mealPending.note || '';
     $('#meal-review-summary').textContent =
       `${n('dinner')} school dinner day${n('dinner') === 1 ? '' : 's'} and ${n('packed')} packed lunch day${n('packed') === 1 ? '' : 's'}, ` +
@@ -584,12 +562,12 @@
     }))));
   }
 
-  document.querySelectorAll('.meal-up input').forEach(inp => inp.addEventListener('change', e => {
-    handleMealFile(e.target.files[0], e.target.dataset.child); e.target.value = '';
-  }));
+  $('#meal-file').addEventListener('change', e => { handleMealFile(e.target.files[0]); e.target.value = ''; });
+  $('#meal-who').addEventListener('change', e => { if (mealPending) { mealPending.child = e.target.value; renderMealReview(); } });
   $('#meal-cancel').addEventListener('click', () => { mealPending = null; renderMealReview(); });
   $('#meal-save').addEventListener('click', () => {
     const { child, days, menus } = mealPending;
+    if (!child) return;
     for (const [k, v] of Object.entries(days)) {
       if (v === 'dinner' || v === 'packed') state.meals[child][k] = v;
       if (menus[k]) state.menus[child][k] = menus[k]; else if (v === 'packed') delete state.menus[child][k];

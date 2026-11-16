@@ -8,14 +8,13 @@ A simple month-by-month calendar for Theo's and Ruby's school dates.
   years or classes (Reception, Y2, Willow, Hazel…) are labelled so they're easy to skip, and **Add all** leaves them out.
 - Lines under a date in a pasted email are kept as **notes**. If the date is already on the calendar,
   ✓ adds the notes to it instead of making a copy.
-- **School dinners:** upload Theo's and Ruby's dinner PDFs separately. Every date in the PDF is a school dinner day,
-  and every other weekday in the weeks it covers is a packed lunch day (INSET days and holidays on the calendar are left out).
-  You check the days before saving. Each school day on the calendar then shows "Theo: School dinner / Packed lunch" and
-  the same for Ruby; tap one to switch it.
+- **School dinners:** one uploader for both children. It reads whose order it is from the PDF (or asks, if the PDF
+  doesn't say). Every date in the order is a school dinner day, and every other weekday in the weeks it covers is a
+  packed lunch day (INSET days and holidays on the calendar are left out). You check the days before saving.
   - Screenshots of the meal ordering site (image-only PDFs, like the Local Food Links "Order #…" pages) are read
     with text recognition that runs in the browser (Tesseract, hosted in `vendor/tesseract/`). Each day's main course
-    and dessert are kept. If the order names the other child, it's saved to that child.
-- **Lunch reminders** at the top: who needs a packed lunch tomorrow, and the next five school days for both children.
+    and dessert are kept.
+- **Lunch reminders**, under the uploader: who needs a packed lunch tomorrow, and the next five school days for both children.
   The morning email also says when someone needs a packed lunch the next day, with the school dinner dish for the other.
 - Anything in the next 7 days is **flagged** at the top until you press **Close flag**.
 - **Email reminders** go to two addresses each morning: one when a date is a week away, and one the day before.

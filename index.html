@@ -39,8 +39,6 @@
   </header>
 
   <main class="wrap">
-    <section id="lunch-next" class="lunch-next" aria-label="Lunch reminders" hidden></section>
-
     <section id="flags" class="flags" aria-live="polite" hidden>
       <h2 class="section-label">Coming up in the next 7 days</h2>
       <ul id="flag-list" class="flag-list"></ul>
@@ -48,18 +46,11 @@
 
     <section class="meals" aria-labelledby="meals-title">
       <h2 id="meals-title" class="section-label">School dinners</h2>
-      <div class="meal-uploaders">
-        <label class="meal-up theo" for="meal-theo">
-          <span class="meal-up-name">Theo's school dinners</span>
-          <span class="meal-up-hint">Upload PDF. Days not in it are packed lunch days.</span>
-          <input type="file" id="meal-theo" data-child="theo" accept="application/pdf,.pdf" hidden>
-        </label>
-        <label class="meal-up ruby" for="meal-ruby">
-          <span class="meal-up-name">Ruby's school dinners</span>
-          <span class="meal-up-hint">Upload PDF. Days not in it are packed lunch days.</span>
-          <input type="file" id="meal-ruby" data-child="ruby" accept="application/pdf,.pdf" hidden>
-        </label>
-      </div>
+      <label class="meal-up" for="meal-file">
+        <span class="meal-up-name">Upload a school dinner order</span>
+        <span class="meal-up-hint">For Theo or Ruby. It reads whose order it is. Days not in it are packed lunch days.</span>
+        <input type="file" id="meal-file" accept="application/pdf,.pdf" hidden>
+      </label>
       <p id="meal-status" class="drop-status" role="status"></p>
     </section>
 
@@ -69,6 +60,13 @@
           <h2 class="section-label" id="meal-review-title"></h2>
           <p class="hint" id="meal-review-summary"></p>
           <p class="hint meal-note" id="meal-review-note"></p>
+          <div class="review-bulk" id="meal-who-row" hidden>
+            <span>Whose order is this?</span>
+            <div class="who-pick" id="meal-who">
+              <label><input type="radio" name="meal-who" value="theo"><span>Theo</span></label>
+              <label><input type="radio" name="meal-who" value="ruby"><span>Ruby</span></label>
+            </div>
+          </div>
         </div>
         <div class="review-actions">
           <button type="button" class="btn ghost" id="meal-cancel">Cancel</button>
@@ -78,6 +76,8 @@
       <p class="hint">Tap a day to switch it between school dinner and packed lunch.</p>
       <div id="meal-weeks" class="meal-weeks"></div>
     </section>
+
+    <section id="lunch-next" class="lunch-next" aria-label="Lunch reminders" hidden></section>
 
     <section class="sources">
       <div id="dropzone" class="dropzone" tabindex="0" role="button" aria-label="Upload a PDF letter from school">
@@ -142,8 +142,6 @@
           <span><i class="dot dot-event"></i>Both / not set</span>
           <span><i class="dot dot-important"></i>Important</span>
           <span><i class="dot dot-flag"></i>Within a week</span>
-          <span><i class="meal-key dinner">T</i>School dinner</span>
-          <span><i class="meal-key packed">T</i>Packed lunch</span>
         </div>
       </div>
       <div class="grid weekdays" aria-hidden="true">
