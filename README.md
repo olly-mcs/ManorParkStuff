@@ -4,8 +4,8 @@ A simple month-by-month calendar for Theo's and Ruby's school dates.
 
 - **Upload a PDF** (letters, newsletters) or **paste an email**. The dates it finds come up for review:
   tap **✓** to add one or **✕** to skip it, pick **Theo / Ruby / Both**, and star anything important.
-- Anything mentioning **Year 3** is tagged Theo, **Year 1** is tagged Ruby. Dates that only mention other
-  years (Reception, Y2, Y4…) are labelled so they're easy to skip, and **Add all** leaves them out.
+- Anything mentioning **Year 3** or **Sycamore** class is tagged Theo, and **Year 1** or **Hazel** class is tagged Ruby. Dates that only mention other
+  years or classes (Reception, Y2, Willow, Cedar…) are labelled so they're easy to skip, and **Add all** leaves them out.
 - Lines under a date in a pasted email are kept as **notes**. If the date is already on the calendar,
   ✓ adds the notes to it instead of making a copy.
 - Anything in the next 7 days is **flagged** at the top until you press **Close flag**.
@@ -39,7 +39,7 @@ and the page never shows them.
 | --- | --- |
 | Page | `index.html`, `styles.css` |
 | Calendar, review, sign-in screen | `app.js` |
-| Finding dates in text; Theo = Year 3, Ruby = Year 1 | `parser.js` (`CHILD_YEARS`, and `CHILD_CLASSES` for class names) |
+| Finding dates in text; Theo = Year 3 / Sycamore, Ruby = Year 1 / Hazel | `parser.js` (`CHILD_YEARS`, `CHILD_CLASSES`) |
 | PDF reader (pdf.js 3.11.174, Apache 2.0) | `vendor/` |
 | Sign-in, saving dates, test email | `netlify/functions/api.mjs` |
 | Daily reminder emails (06:30 UTC) | `netlify/functions/daily-reminders.mjs` |

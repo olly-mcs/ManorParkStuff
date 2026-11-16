@@ -72,8 +72,8 @@
   /* Theo is in Year 3 and Ruby in Year 1. Reads year groups mentioned in the text
      ("Y3", "Year 1 and 2", "Years 3 & 4") and says who it's for. */
   const CHILD_YEARS = { theo: 3, ruby: 1 };
-  // Class names, if you want them matched too, e.g. { theo: ['Aspen'], ruby: ['Willow'] }.
-  const CHILD_CLASSES = { theo: [], ruby: [] };
+  // Theo is in Sycamore class, Ruby in Hazel class.
+  const CHILD_CLASSES = { theo: ['Sycamore'], ruby: ['Hazel'] };
   function guessWho(text) {
     const inClass = name => CHILD_CLASSES[name].some(c => new RegExp(`\\b${c}\\b`, 'i').test(text));
     const years = new Set();
@@ -91,8 +91,13 @@
     if (theo && ruby) return { guessWho: 'both' };
     if (theo) return { guessWho: 'theo' };
     if (ruby) return { guessWho: 'ruby' };
-    if (years.size || early) {
+    // Another class named ("Willow Class trip") with no year group mentioned.
+    const ours = [...CHILD_CLASSES.theo, ...CHILD_CLASSES.ruby].map(c => c.toLowerCase());
+    const otherClasses = [...text.matchAll(/\b([A-Z][a-z]+) [Cc]lass\b/g)]
+      .map(m => m[1]).filter(c => !ours.includes(c.toLowerCase()));
+    if (years.size || early || otherClasses.length) {
       const names = [...years].sort().map(n => 'Year ' + n);
+      otherClasses.forEach(c => names.push(c + ' class'));
       if (early) names.unshift(/pre-?school|nursery/i.test(text) ? 'Preschool' : 'Reception');
       return { otherGroup: names.join(', ') };
     }
