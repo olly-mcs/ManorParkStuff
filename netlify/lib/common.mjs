@@ -56,10 +56,11 @@ export async function loadEvents() {
   return {
     events: Array.isArray(data?.events) ? data.events : [],
     meals: data?.meals && typeof data.meals === 'object' ? data.meals : { theo: {}, ruby: {} },
+    menus: data?.menus && typeof data.menus === 'object' ? data.menus : { theo: {}, ruby: {} },
   };
 }
 export async function saveEvents(data) {
-  await store().setJSON('events', { events: data.events, meals: data.meals || { theo: {}, ruby: {} }, savedAt: new Date().toISOString() });
+  await store().setJSON('events', { events: data.events, meals: data.meals || { theo: {}, ruby: {} }, menus: data.menus || { theo: {}, ruby: {} }, savedAt: new Date().toISOString() });
 }
 async function loadSentLog() {
   return (await store().get('reminders-sent', { type: 'json' })) || {};
@@ -102,6 +103,24 @@ export function dueReminders(events, log, today = londonToday()) {
   return { week: week.sort(order), tomorrow: tomorrow.sort(order) };
 }
 
+/* Lunches for the day after `today`. Only reported when someone needs a packed lunch,
+   once per date, and never on a day the calendar marks as closed (INSET, holidays). */
+const CLOSED = /\b(inset|half[- ]?term|holiday|bank holiday|school closed|closure|training day)\b/i;
+export function dueLunches(meals, events, log, today = londonToday(), menus = {}) {
+  const d = new Date(today + 'T00:00:00Z'); d.setUTCDate(d.getUTCDate() + 1);
+  const date = d.toISOString().slice(0, 10);
+  const key = `lunch:${date}`;
+  if (log[key]) return null;
+  const closed = events.some(e => e?.title && CLOSED.test(e.title) &&
+    (e.date === date || (e.endDate && e.date <= date && date <= e.endDate)));
+  if (closed) return null;
+  const lunches = ['theo', 'ruby']
+    .map(child => ({ child, kind: meals?.[child]?.[date], dish: menus?.[child]?.[date]?.main || '' }))
+    .filter(l => l.kind === 'dinner' || l.kind === 'packed');
+  if (!lunches.some(l => l.kind === 'packed')) return null;
+  return { date, key, lunches };
+}
+
 export function recipients() {
   return env('NOTIFY_EMAILS').split(/[,;\s]+/).filter(e => /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(e)).slice(0, 2);
 }
@@ -110,8 +129,10 @@ function esc(s) {
   return String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 }
 
-export function buildEmail({ week, tomorrow }, siteUrl) {
+export function buildEmail({ week, tomorrow, lunch }, siteUrl) {
   const parts = [];
+  const packed = lunch ? lunch.lunches.filter(l => l.kind === 'packed').map(l => WHO[l.child]) : [];
+  if (packed.length) parts.push(`Packed lunch tomorrow for ${packed.join(' and ')}`);
   if (tomorrow.length) parts.push(tomorrow.length === 1 ? `Tomorrow: ${tomorrow[0].ev.title}` : `${tomorrow.length} things tomorrow`);
   if (week.length) parts.push(`${week.length} coming up this week`);
   const subject = 'Manor Park: ' + parts.join(' · ');
@@ -129,8 +150,16 @@ export function buildEmail({ week, tomorrow }, siteUrl) {
   const section = (title, items) => items.length
     ? `<h2 style="font:700 18px/1.3 Arial,sans-serif;color:#18231c;margin:20px 0 8px">${title}</h2><table role="presentation" width="100%" cellspacing="0" cellpadding="0">${items.map(row).join('')}</table>`
     : '';
+  const lunchHtml = lunch ? `<h2 style="font:700 18px/1.3 Arial,sans-serif;color:#18231c;margin:20px 0 8px">Lunch tomorrow, ${esc(longDate(lunch.date))}</h2>
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0">${lunch.lunches.map(l => {
+      const colour = l.child === 'theo' ? '#2459b8' : '#a8245e';
+      const isPacked = l.kind === 'packed';
+      return `<tr><td style="padding:10px 12px;border-left:4px solid ${colour};background:${isPacked ? '#fdf1d3' : '#f5f7f4'};font:${isPacked ? 700 : 400} 16px/1.4 Arial,sans-serif;color:#18231c">
+        <span style="color:${colour};font-weight:700">${WHO[l.child]}</span>: ${isPacked ? 'needs a packed lunch' : 'school dinner'}${!isPacked && l.dish ? `<div style="font:14px/1.4 Arial,sans-serif;color:#5b6b60">${esc(l.dish)}</div>` : ''}</td></tr><tr><td style="height:6px"></td></tr>`;
+    }).join('')}</table>` : '';
   const html = `<div style="max-width:560px;margin:0 auto;padding:16px">
     <div style="font:700 22px/1.2 Arial,sans-serif;color:#1f5a3c">Manor Park Dates</div>
+    ${lunchHtml}
     ${section('Tomorrow', tomorrow)}
     ${section('Coming up in the next week', week)}
     ${siteUrl ? `<p style="font:14px/1.5 Arial,sans-serif;margin-top:20px"><a href="${esc(siteUrl)}" style="color:#1f5a3c">Open the calendar</a></p>` : ''}
@@ -138,6 +167,7 @@ export function buildEmail({ week, tomorrow }, siteUrl) {
 
   const line = ({ ev, n }) => `- ${WHO[ev.who] || WHO.both}: ${ev.important ? '[IMPORTANT] ' : ''}${ev.title}, ${longDate(ev.date)}${n ? ` (in ${n} days)` : ''}${ev.notes ? ` (${ev.notes})` : ''}`;
   const text = ['Manor Park Dates', '',
+    ...(lunch ? [`LUNCH TOMORROW (${longDate(lunch.date)})`, ...lunch.lunches.map(l => `- ${WHO[l.child]}: ${l.kind === 'packed' ? 'needs a packed lunch' : 'school dinner' + (l.dish ? ` (${l.dish})` : '')}`), ''] : []),
     ...(tomorrow.length ? ['TOMORROW', ...tomorrow.map(line), ''] : []),
     ...(week.length ? ['COMING UP IN THE NEXT WEEK', ...week.map(line), ''] : []),
     siteUrl || ''].join('\n');
@@ -162,20 +192,22 @@ export async function sendEmail({ subject, html, text }) {
 
 /** Runs the daily check. Returns a summary; never includes email addresses. */
 export async function runReminders({ dryRun = false } = {}) {
-  const { events } = await loadEvents();
+  const { events, meals, menus } = await loadEvents();
   const log = await loadSentLog();
   const due = dueReminders(events, log);
-  const count = due.week.length + due.tomorrow.length;
-  if (!count) return { sent: 0, week: 0, tomorrow: 0 };
+  due.lunch = dueLunches(meals, events, log, londonToday(), menus);
+  const count = due.week.length + due.tomorrow.length + (due.lunch ? 1 : 0);
+  if (!count) return { sent: 0, week: 0, tomorrow: 0, lunch: false };
   if (!dryRun) {
     await sendEmail(buildEmail(due, env('URL')));
     const now = new Date().toISOString();
     for (const d of [...due.week, ...due.tomorrow]) log[d.key] = now;
     // A "tomorrow" email also covers the week reminder, so it isn't sent late.
     for (const d of due.tomorrow) log[`${d.ev.id}:${d.ev.date}:week`] = now;
+    if (due.lunch) log[due.lunch.key] = now;
     await saveSentLog(log);
   }
-  return { sent: dryRun ? 0 : 1, week: due.week.length, tomorrow: due.tomorrow.length };
+  return { sent: dryRun ? 0 : 1, week: due.week.length, tomorrow: due.tomorrow.length, lunch: !!due.lunch };
 }
 
 export function json(body, status = 200, headers = {}) {

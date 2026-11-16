@@ -276,7 +276,92 @@
     return [...out].sort();
   }
 
-  const api = { findDates, groupItems, guessWho, findMealDates };
+  /**
+   * Reads a school meal order (e.g. a Local Food Links "Order #…" page, often a screenshot read by OCR).
+   * Each row: "DD/MM/YYYY  Child Name  Manor  Dish…" followed by "Regular - Dessert" / "… - Main Course".
+   * OCR often drops or mangles the slashes or the year, so dates are rebuilt from their digits, and
+   * because each day has a dessert row and a main-course row, one misread row is covered by its partner.
+   * Returns { child: 'theo'|'ruby'|null, dates: [iso], menus: { iso: { main, dessert } } } or null.
+   */
+  function readMealOrder(lines, today = new Date()) {
+    lines = lines.map(l => (Array.isArray(l) ? l.join(' ') : String(l))).map(l => l.replace(/\s+/g, ' ').trim()).filter(Boolean);
+    const all = lines.join('\n');
+    const theo = (all.match(/\btheo\b/gi) || []).length, ruby = (all.match(/\bruby\b/gi) || []).length;
+    const child = theo > ruby ? 'theo' : ruby > theo ? 'ruby' : null;
+
+    // Rows start with a date-ish run of digits and separators.
+    const rows = [];
+    lines.forEach((line, i) => {
+      const m = line.match(/^[^\dA-Za-z]{0,3}([\d][\d\/|.\-\s]{5,13}\d)(?=\D|$)\s*(.*)$/);
+      if (!m) return;
+      const digits = m[1].replace(/\D/g, '');
+      if (digits.length < 6 || digits.length > 10) return;
+      let d, mo, y;
+      if (/^\d{1,2}[\/|.\-]\d{1,2}[\/|.\-]\d{2,4}$/.test(m[1].replace(/\s/g, ''))) {
+        [d, mo, y] = m[1].replace(/\s/g, '').split(/[\/|.\-]/).map(Number);
+      } else if (digits.length === 8) { d = +digits.slice(0, 2); mo = +digits.slice(2, 4); y = +digits.slice(4); }
+      else if (digits.length === 10) { d = +digits.slice(0, 2); mo = +digits.slice(3, 5); y = +digits.slice(6); }   // slashes read as digits
+      else if (digits.length === 9) {                                                                       // one slash read as a digit
+        const a = [+digits.slice(0, 2), +digits.slice(3, 5), +digits.slice(5)];
+        const b = [+digits.slice(0, 2), +digits.slice(2, 4), +digits.slice(5)];
+        [d, mo, y] = (a[1] >= 1 && a[1] <= 12) ? a : b;
+      } else { d = +digits.slice(0, 2); mo = +digits.slice(2, 4); y = NaN; }
+      // Course and dish: the dish starts after the site name; the course is on one of the next lines.
+      let course = null;
+      for (let k = i; k < Math.min(lines.length, i + 4); k++) {
+        if (k > i && /^[^\dA-Za-z]{0,3}\d[\d\/|.\-\s]{5,13}\d/.test(lines[k])) break;
+        if (/dessert/i.test(lines[k])) { course = 'dessert'; break; }
+        if (/main\s*course/i.test(lines[k])) { course = 'main'; break; }
+      }
+      const rest = m[2];
+      const site = rest.search(/\bManor\b/i);
+      let dish = site >= 0 ? rest.slice(site).replace(/^Manor\s*(Park)?\s*/i, '') : '';
+      dish = dish.replace(/\([^)]*\)?/g, ' ').replace(/\s+,/g, ',').replace(/\s*&\s*/g, ' & ')
+        .replace(/^[^A-Za-z0-9]+|[\s,&~:.\-]+$/g, '').replace(/\s{2,}/g, ' ').trim();
+      rows.push({ d, mo, y, course, dish });
+    });
+    if (!rows.length) return null;
+
+    // A mangled year (e.g. "1202") takes the year most rows agree on.
+    const years = rows.map(r => r.y).filter(y => y >= 2020 && y <= 2100);
+    const common = years.sort((a, b) => years.filter(v => v === b).length - years.filter(v => v === a).length)[0] || today.getFullYear();
+    const toIso = r => {
+      const y = r.y >= 2020 && r.y <= 2100 ? r.y : common;
+      const k = iso(y, r.mo - 1, r.d);
+      if (!k) return null;
+      const w = new Date(y, r.mo - 1, r.d).getDay();
+      return w === 0 || w === 6 ? null : k; // school days only
+    };
+    rows.forEach(r => { r.iso = toIso(r); });
+
+    // Pair rows (dessert + main of the same day). A pair whose dates disagree keeps the date that
+    // fits the order (dates only go forwards); a lone row is kept if its date is valid.
+    const chosen = [];
+    let prev = '';
+    for (let i = 0; i < rows.length; i++) {
+      const a = rows[i], b = rows[i + 1];
+      let date = a.iso, pair = [a];
+      if (b && (b.iso === a.iso || !a.iso || !b.iso || (a.course && b.course && a.course !== b.course))) {
+        const opts = [a.iso, b.iso].filter(Boolean);
+        const inOrder = opts.filter(x => x >= prev);
+        date = a.iso && a.iso === b.iso ? a.iso : (inOrder.sort()[0] || opts[0] || null);
+        pair = [a, b]; i++;
+      }
+      if (!date) continue;
+      chosen.push({ date, pair });
+      prev = date;
+    }
+
+    const menus = {};
+    for (const { date, pair } of chosen) {
+      const m = menus[date] || (menus[date] = {});
+      for (const r of pair) if (r.course && r.dish && !m[r.course]) m[r.course] = r.dish.slice(0, 140);
+    }
+    const dates = [...new Set(chosen.map(c => c.date))].sort();
+    return dates.length ? { child, dates, menus } : null;
+  }
+
+  const api = { findDates, groupItems, guessWho, findMealDates, readMealOrder };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else root.MPDParser = api;
 })(typeof window !== 'undefined' ? window : globalThis);

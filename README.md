@@ -11,7 +11,12 @@ A simple month-by-month calendar for Theo's and Ruby's school dates.
 - **School dinners:** upload Theo's and Ruby's dinner PDFs separately. Every date in the PDF is a school dinner day,
   and every other weekday in the weeks it covers is a packed lunch day (INSET days and holidays on the calendar are left out).
   You check the days before saving. Each school day on the calendar then shows "Theo: School dinner / Packed lunch" and
-  the same for Ruby; tap one to switch it. The next school day's lunches are shown at the top of the page.
+  the same for Ruby; tap one to switch it.
+  - Screenshots of the meal ordering site (image-only PDFs, like the Local Food Links "Order #…" pages) are read
+    with text recognition that runs in the browser (Tesseract, hosted in `vendor/tesseract/`). Each day's main course
+    and dessert are kept. If the order names the other child, it's saved to that child.
+- **Lunch reminders** at the top: who needs a packed lunch tomorrow, and the next five school days for both children.
+  The morning email also says when someone needs a packed lunch the next day, with the school dinner dish for the other.
 - Anything in the next 7 days is **flagged** at the top until you press **Close flag**.
 - **Email reminders** go to two addresses each morning: one when a date is a week away, and one the day before.
 - The site is behind a **family password**. The dates and email addresses are stored on the server, not in the page.
@@ -45,6 +50,7 @@ and the page never shows them.
 | Calendar, review, sign-in screen | `app.js` |
 | Finding dates in text; Theo = Year 3 / Sycamore, Ruby = Year 1 / Hazel | `parser.js` (`CHILD_YEARS`, `CHILD_CLASSES`) |
 | PDF reader (pdf.js 3.11.174, Apache 2.0) | `vendor/` |
+| Text recognition for image PDFs (tesseract.js 6.0.1, Apache 2.0) | `vendor/tesseract/` |
 | Sign-in, saving dates, test email | `netlify/functions/api.mjs` |
 | Daily reminder emails (06:30 UTC) | `netlify/functions/daily-reminders.mjs` |
 | Shared server code | `netlify/lib/common.mjs` |

@@ -36,6 +36,21 @@ function cleanMeals(m) {
   return out;
 }
 
+// Menus: { theo: { "2026-11-16": { main, dessert } }, ruby: { ... } }
+function cleanMenus(m) {
+  const out = { theo: {}, ruby: {} };
+  const str = v => (typeof v === 'string' ? v.slice(0, 160) : undefined);
+  for (const child of ['theo', 'ruby']) {
+    const days = m && typeof m[child] === 'object' ? m[child] : {};
+    for (const [date, v] of Object.entries(days).slice(0, 800)) {
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || !v || typeof v !== 'object') continue;
+      const main = str(v.main), dessert = str(v.dessert);
+      if (main || dessert) out[child][date] = { ...(main && { main }), ...(dessert && { dessert }) };
+    }
+  }
+  return out;
+}
+
 export default async (req) => {
   const route = new URL(req.url).pathname.replace(/^\/api\/?/, '').replace(/\/$/, '');
 
@@ -72,7 +87,7 @@ export default async (req) => {
     try { body = await req.json(); } catch { return json({ error: 'Bad data' }, 400); }
     if (!Array.isArray(body?.events)) return json({ error: 'Bad data' }, 400);
     const events = body.events.slice(0, MAX_EVENTS).map(cleanEvent).filter(Boolean);
-    await saveEvents({ events, meals: cleanMeals(body.meals) });
+    await saveEvents({ events, meals: cleanMeals(body.meals), menus: cleanMenus(body.menus) });
     return json({ ok: true, count: events.length });
   }
 

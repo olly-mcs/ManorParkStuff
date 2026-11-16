@@ -71,3 +71,28 @@ assert.deepStrictEqual(findMealDates([
   'Lunch is served at 12.15',
 ], today), ['2026-11-16', '2026-11-18', '2026-11-23', '2026-11-24', '2026-11-25']);
 console.log('meal dates ok');
+
+// Meal order screenshots read by OCR: mangled dates, two rows per day.
+const { readMealOrder } = globalThis.MPDParser || require('../parser.js');
+const order = readMealOrder(`Order #1
+Date Diner Site Meal
+09/11/2026 Ruby Example Manor Flapjack (GLUTEN)
+- x Park Regular - Dessert
+09/11/2026 Ruby Example Manor British Beef Bolognese with Colourful Pasta (GLUTEN) & Carrots.
+- x Park Regular - Main Course
+1111/2026 Ruby Example Manor Remembrance Shortbread (GLUTEN)
+Regular - Dessert
+11/11/1202 Ruby Example Manor Roast Pork with Gravy
+Regular - Main Course
+0711212026 Ruby Example Manor Jammy Shortbread
+Regular - Dessert
+07/12/2026 Ruby Example Manor Moroccan Chicken
+Regular - Main Course
+26/06/2026 Ruby Example Manor Banana Cake
+Regular - Dessert
+20/06/2026 Ruby Example Manor Cheese Roll
+Regular - Main Course`.split('\n'), today);
+assert.strictEqual(order.child, 'ruby');
+assert.deepStrictEqual(order.dates, ['2026-06-26', '2026-11-09', '2026-11-11', '2026-12-07']);
+assert.deepStrictEqual(order.menus['2026-11-09'], { dessert: 'Flapjack', main: 'British Beef Bolognese with Colourful Pasta & Carrots' });
+console.log('meal order ok');

@@ -39,7 +39,7 @@
   </header>
 
   <main class="wrap">
-    <section id="lunch-next" class="lunch-next" hidden></section>
+    <section id="lunch-next" class="lunch-next" aria-label="Lunch reminders" hidden></section>
 
     <section id="flags" class="flags" aria-live="polite" hidden>
       <h2 class="section-label">Coming up in the next 7 days</h2>
@@ -68,6 +68,7 @@
         <div>
           <h2 class="section-label" id="meal-review-title"></h2>
           <p class="hint" id="meal-review-summary"></p>
+          <p class="hint meal-note" id="meal-review-note"></p>
         </div>
         <div class="review-actions">
           <button type="button" class="btn ghost" id="meal-cancel">Cancel</button>
