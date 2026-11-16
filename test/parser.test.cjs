@@ -28,9 +28,9 @@ assert.deepStrictEqual(guessWho('Y3 and Y4 Christmas Service'), { guessWho: 'the
 assert.deepStrictEqual(guessWho('2pm Reception Christmas craft'), { otherGroup: 'Reception' });
 assert.deepStrictEqual(guessWho('Pantomime'), {});
 assert.deepStrictEqual(guessWho('Sycamore Class trip to Wagamama'), { guessWho: 'theo' });
-assert.deepStrictEqual(guessWho('Hazel class assembly'), { guessWho: 'ruby' });
+assert.deepStrictEqual(guessWho('Aspen class assembly'), { guessWho: 'ruby' });
 assert.deepStrictEqual(guessWho('Willow Class trip to Wagamama'), { otherGroup: 'Willow class' });
-assert.deepStrictEqual(guessWho('Hazel and Sycamore swimming'), { guessWho: 'both' });
+assert.deepStrictEqual(guessWho('Aspen and Sycamore swimming'), { guessWho: 'both' });
 
 // Pasted email: the lines under a date become its details.
 const pasted = findDates([

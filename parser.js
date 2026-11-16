@@ -72,8 +72,8 @@
   /* Theo is in Year 3 and Ruby in Year 1. Reads year groups mentioned in the text
      ("Y3", "Year 1 and 2", "Years 3 & 4") and says who it's for. */
   const CHILD_YEARS = { theo: 3, ruby: 1 };
-  // Theo is in Sycamore class, Ruby in Hazel class.
-  const CHILD_CLASSES = { theo: ['Sycamore'], ruby: ['Hazel'] };
+  // Theo is in Sycamore class, Ruby in Aspen class.
+  const CHILD_CLASSES = { theo: ['Sycamore'], ruby: ['Aspen'] };
   function guessWho(text) {
     const inClass = name => CHILD_CLASSES[name].some(c => new RegExp(`\\b${c}\\b`, 'i').test(text));
     const years = new Set();
